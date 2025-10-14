@@ -211,3 +211,123 @@ alert ip any any -> any any (msg: "Found empty comment '/**/'"; flow:to_server; 
 
 # Dissection anomalies
 alert http any any -> any any (msg:"HTTP missing Host header"; flow:established,to_server; app-layer-event:http.missing_host_header; metadata: tag HTTP No Host, color warning; sid:6001;)
+
+
+###################################################################################################################
+# Configurations for ECSC 2025 also you can just ciopy for the other ctfs                                         #
+###################################################################################################################
+
+# Copyright (C) 2025  Team Albania
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Suricata rules for ECSC 2025 Attack-Defense CTF
+# Based on FCSC-FR/shovel rules
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ECSC 2025 FLAGS (sid 10001-10100)
+# ═══════════════════════════════════════════════════════════════════════════
+# Flag format: ECSC{[a-zA-Z0-9_-]{5,100}}
+# Example: ECSC{test_flag_abc123_xyz}
+
+# Outgoing flags (stolen from us - DANGER!)
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - sent to attacker"; flow:to_client; content: "ECSC{"; pcre: "/(ECSC\{[a-zA-Z0-9_-]{5,100}\})/, flow:match"; distance: -5; metadata: tag FLAG OUT, color danger; flowint: tag_FLAG_OUT, +, 1; sid: 10001;)
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - sent to attacker (compressed)"; flow:to_client; file.data; content: "ECSC{"; pcre: "/(ECSC\{[a-zA-Z0-9_-]{5,100}\})/, flow:match"; distance: -5; metadata: tag FLAG OUT, color danger; flowint: tag_FLAG_OUT, +, 1; sid: 10002;)
+
+# URL encoded: ECSC%7B...%7D
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - URL encoded"; flow:to_client; content: "ECSC%7B"; pcre: "/(ECSC%7B[a-zA-Z0-9_-]{5,100}%7D)/, flow:match"; distance: -7; metadata: tag FLAG OUT URL, color danger; flowint: tag_FLAG_OUT, +, 1; sid: 10003;)
+
+# Base64 encoded: RUNTQ3s...fQ==
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - Base64 encoded"; flow:to_client; content: "RUNTQ3"; pcre: "/(RUNTQ3[A-Za-z0-9+\/]{10,140}[A-Za-z0-9+\/=]{0,3})/, flow:match"; distance: -6; metadata: tag FLAG OUT B64, color danger; flowint: tag_FLAG_OUT_B64, +, 1; sid: 10004;)
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - Base64 in file"; flow:to_client; file.data; content: "RUNTQ3"; pcre: "/(RUNTQ3[A-Za-z0-9+\/]{10,140}[A-Za-z0-9+\/=]{0,3})/, flow:match"; distance: -6; metadata: tag FLAG OUT B64, color danger; flowint: tag_FLAG_OUT_B64, +, 1; sid: 10005;)
+
+# Hex encoded: 455343437b...7d
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - Hex encoded (lowercase)"; flow:to_client; content: "455343437b"; pcre: "/(455343437b[0-9a-f]{10,200}7d)/, flow:match"; distance: -10; metadata: tag FLAG OUT HEX, color danger; flowint: tag_FLAG_OUT_HEX, +, 1; sid: 10006;)
+alert ip any any -> any any (msg: "ECSC 2025 FLAG STOLEN - Hex encoded (uppercase)"; flow:to_client; content: "455343437B"; pcre: "/(455343437B[0-9A-F]{10,200}7D)/, flow:match"; distance: -10; metadata: tag FLAG OUT HEX, color danger; flowint: tag_FLAG_OUT_HEX, +, 1; sid: 10007;)
+
+# Incoming flags (from checker - SUCCESS!)
+alert ip any any -> any any (msg: "ECSC 2025 flag received - checker placing flag"; flow:to_server; content: "ECSC{"; pcre: "/(ECSC\{[a-zA-Z0-9_-]{5,100}\})/, flow:match"; distance: -5; metadata: tag FLAG IN, color success; flowint: tag_FLAG_IN, +, 1; sid: 10011;)
+alert ip any any -> any any (msg: "ECSC 2025 flag received - URL encoded"; flow:to_server; content: "ECSC%7B"; pcre: "/(ECSC%7B[a-zA-Z0-9_-]{5,100}%7D)/, flow:match"; distance: -7; metadata: tag FLAG IN, color success; flowint: tag_FLAG_IN, +, 1; sid: 10012;)
+alert ip any any -> any any (msg: "ECSC 2025 flag received - Base64 encoded"; flow:to_server; content: "RUNTQ3"; metadata: tag FLAG IN B64, color success; flowint: tag_FLAG_IN, +, 1; sid: 10013;)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HTTP METHOD TAGS (sid 12001-12100)
+# ═══════════════════════════════════════════════════════════════════════════
+alert http any any -> any any (msg: "tag"; http.method; content: "GET"; startswith; metadata: tag GET, color info; flowint: tag_GET, +, 1; sid: 12001;)
+alert http any any -> any any (msg: "tag"; http.method; content: "POST"; startswith; metadata: tag POST, color info; flowint: tag_POST, +, 1; sid: 12002;)
+alert http any any -> any any (msg: "tag"; http.method; content: "PUT"; startswith; metadata: tag PUT, color info; flowint: tag_PUT, +, 1; sid: 12003;)
+alert http any any -> any any (msg: "tag"; http.method; content: "DELETE"; startswith; metadata: tag DELETE, color info; flowint: tag_DELETE, +, 1; sid: 12004;)
+alert http any any -> any any (msg: "tag"; http.method; content: "PATCH"; startswith; metadata: tag PATCH, color info; flowint: tag_PATCH, +, 1; sid: 12005;)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HTTP STATUS TAGS (sid 12101-12200)
+# ═══════════════════════════════════════════════════════════════════════════
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "200"; startswith; metadata: tag 200 OK, color info; flowint: tag_200, +, 1; sid: 12101;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "400"; startswith; metadata: tag 400 Bad, color warning; flowint: tag_400, +, 1; sid: 12102;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "401"; startswith; metadata: tag 401 Unauth, color warning; flowint: tag_401, +, 1; sid: 12103;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "403"; startswith; metadata: tag 403 Forbid, color warning; flowint: tag_403, +, 1; sid: 12104;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "404"; startswith; metadata: tag 404 NotFound, color info; flowint: tag_404, +, 1; sid: 12105;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "500"; startswith; metadata: tag 500 Error, color danger; flowint: tag_500, +, 1; sid: 12106;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "502"; startswith; metadata: tag 502 BadGW, color danger; flowint: tag_502, +, 1; sid: 12107;)
+alert http any any -> any any (msg: "tag"; http.stat_code; content: "503"; startswith; metadata: tag 503 Unavail, color danger; flowint: tag_503, +, 1; sid: 12108;)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# COMMON EXPLOIT PATTERNS (sid 14001-15000)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# SQL Injection
+alert ip any any -> any any (msg: "SQL Injection - UNION SELECT"; flow:to_server; content: "UNION"; nocase; content: "SELECT"; nocase; within: 100; metadata: tag SQLi UNION, color danger; sid: 14001;)
+alert ip any any -> any any (msg: "SQL Injection - OR 1=1"; flow:to_server; content: "OR "; nocase; content: "1=1"; nocase; within: 20; metadata: tag SQLi OR, color danger; sid: 14002;)
+alert ip any any -> any any (msg: "SQL Injection - ' OR '"; flow:to_server; content: "' OR '"; nocase; metadata: tag SQLi OR, color danger; sid: 14003;)
+
+# Command Injection
+alert ip any any -> any any (msg: "Command Injection - /bin/bash"; flow:to_server; content: "/bin/bash"; metadata: tag RCE bash, color danger; sid: 14101;)
+alert ip any any -> any any (msg: "Command Injection - /bin/sh"; flow:to_server; content: "/bin/sh"; metadata: tag RCE sh, color danger; sid: 14102;)
+alert ip any any -> any any (msg: "Command Injection - nc reverse"; flow:to_server; content: "nc "; content: "-e "; within: 50; metadata: tag RCE nc, color danger; sid: 14103;)
+alert ip any any -> any any (msg: "Command Injection - Bash ${IFS}"; flow:to_server; content: "${IFS}"; metadata: tag RCE IFS, color danger; sid: 14104;)
+
+# Path Traversal
+alert ip any any -> any any (msg: "Path Traversal - ../../"; flow:to_server; content: "../../"; metadata: tag PathTrav, color danger; sid: 14201;)
+alert ip any any -> any any (msg: "Path Traversal - URL encoded"; flow:to_server; content: "..%2F..%2F"; metadata: tag PathTrav, color danger; sid: 14202;)
+alert ip any any -> any any (msg: "Path Traversal - /etc/passwd"; flow:to_server; content: "/etc/passwd"; metadata: tag PathTrav passwd, color danger; sid: 14203;)
+
+# XSS
+alert ip any any -> any any (msg: "XSS - <script> tag"; flow:to_server; content: "<script"; nocase; metadata: tag XSS script, color warning; sid: 14301;)
+alert ip any any -> any any (msg: "XSS - javascript:"; flow:to_server; content: "javascript:"; nocase; metadata: tag XSS js, color warning; sid: 14302;)
+alert ip any any -> any any (msg: "XSS - onerror="; flow:to_server; content: "onerror="; nocase; metadata: tag XSS event, color warning; sid: 14303;)
+
+# File Upload
+alert ip any any -> any any (msg: "Suspicious file upload - PHP"; flow:to_server; content: "<?php"; nocase; metadata: tag Upload PHP, color danger; sid: 14401;)
+alert ip any any -> any any (msg: "Suspicious file upload - .php extension"; flow:to_server; content: ".php"; nocase; metadata: tag Upload .php, color warning; sid: 14402;)
+
+# SSRF
+alert ip any any -> any any (msg: "SSRF - file:// protocol"; flow:to_server; content: "file://"; nocase; metadata: tag SSRF file, color danger; sid: 14501;)
+alert ip any any -> any any (msg: "SSRF - gopher:// protocol"; flow:to_server; content: "gopher://"; nocase; metadata: tag SSRF gopher, color danger; sid: 14502;)
+alert ip any any -> any any (msg: "SSRF - localhost access"; flow:to_server; content: "localhost"; nocase; metadata: tag SSRF local, color warning; sid: 14503;)
+alert ip any any -> any any (msg: "SSRF - 127.0.0.1 access"; flow:to_server; content: "127.0.0.1"; metadata: tag SSRF 127, color warning; sid: 14504;)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# USER AGENTS (sid 13001-13100)
+# ═══════════════════════════════════════════════════════════════════════════
+alert http any any -> any any (msg: "tag"; flow:to_server; http.user_agent; content: "python-requests/"; startswith; metadata: tag UA PyReq, color info; sid: 13001;)
+alert http any any -> any any (msg: "tag"; flow:to_server; http.user_agent; content: "curl/"; startswith; metadata: tag UA curl, color info; sid: 13002;)
+alert http any any -> any any (msg: "tag"; flow:to_server; http.user_agent; content: "python-httpx/"; startswith; metadata: tag UA httpx, color info; sid: 13003;)
+alert http any any -> any any (msg: "tag"; flow:to_server; http.user_agent; content: "Go-http-client/"; startswith; metadata: tag UA Go, color info; sid: 13004;)
+alert http any any -> any any (msg: "tag"; flow:to_server; http.user_agent; content: "Python/3."; startswith; metadata: tag UA Py3, color info; sid: 13005;)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# INSTRUCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# To reload rules WITHOUT restarting Suricata:
+#   docker-compose exec suricata pkill -USR2 suricata
+#
+# To add custom rules for your services:
+#   - Use sid starting from 20000+
+#   - Follow the format above
+#   - Test with a known attack first
+#
+# Flag detection priority:
+#   sid 10001-10010: Outgoing flags (DANGER - being stolen!)
+#   sid 10011-10020: Incoming flags (SUCCESS - checker placing)
+#
+# ═══════════════════════════════════════════════════════════════════════════

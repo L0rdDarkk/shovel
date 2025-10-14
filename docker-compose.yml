@@ -1,64 +1,193 @@
-# Copyright (C) 2024  ANSSI
-# SPDX-License-Identifier: CC0-1.0
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shovel Enhanced - Docker Compose Configuration
+# Team Albania - ECSC 2025
+# 
+# This configuration runs ON your vulnbox alongside your services
+# Tested and proven in ECSC 2025 competition
+# ═══════════════════════════════════════════════════════════════════════════
+
 services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Suricata IDS - Network Traffic Analysis
+  # ═══════════════════════════════════════════════════════════════════════════
   suricata:
     build: ./suricata
-    image: anssi/shovel-suricata:dev
+    image: shovel-suricata:latest
+    container_name: shovel-suricata
+    restart: unless-stopped
+    
     volumes:
       - "./input_pcaps:/input_pcaps:ro"
       - "./suricata/rules:/suricata/rules:ro"
       - "./suricata/output:/suricata/output:rw"
+    
+    # ───────────────────────────────────────────────────────────────────────
+    # CAPTURE MODE CONFIGURATION
+    # ───────────────────────────────────────────────────────────────────────
+    # Choose ONE mode by uncommenting the appropriate section below
+    # 
+    # Current: MODE C (PCAP-over-IP with broker) - ECSC 2025 PROVEN SETUP
+    # ───────────────────────────────────────────────────────────────────────
+    
+    # ╔═══════════════════════════════════════════════════════════════════╗
+    # ║ MODE A: PCAP File Replay                                         ║
+    # ║ Use for: Testing, post-game analysis                             ║
+    # ║ Requires: PCAP files in ./input_pcaps/                           ║
+    # ║ Command: docker-compose up -d --build                            ║
+    # ╚═══════════════════════════════════════════════════════════════════╝
+    # Uncomment below for Mode A:
+    # command: -r /input_pcaps
+    
+    # ╔═══════════════════════════════════════════════════════════════════╗
+    # ║ MODE B: Live Interface Capture                                   ║
+    # ║ Use for: Direct capture from network interface                   ║
+    # ║ Requires: Root/sudo access                                       ║
+    # ║ Command: sudo docker-compose up -d --build                       ║
+    # ╚═══════════════════════════════════════════════════════════════════╝
+    # Uncomment below for Mode B:
+    # network_mode: "host"
+    # privileged: true
+    # cap_add:
+    #   - NET_ADMIN
+    #   - NET_RAW
+    # command: -i ${CAPTURE_INTERFACE:-vulnbox}
+    
+    # ╔═══════════════════════════════════════════════════════════════════╗
+    # ║ MODE C: PCAP-over-IP with Broker (RECOMMENDED)                   ║
+    # ║ Use for: Production CTF games                                     ║
+    # ║ Requires: Root/sudo access, pcap-broker service                  ║
+    # ║ Command: sudo docker-compose up -d --build                       ║
+    # ║                                                                   ║
+    # ║ ✅ THIS IS WHAT TEAM ALBANIA USED AT ECSC 2025!                  ║
+    # ╚═══════════════════════════════════════════════════════════════════╝
+    # Active - Mode C configuration:
+    network_mode: "host"
+    command: -r /dev/stdin
+    environment:
+      - PCAP_OVER_IP=${PCAP_OVER_IP_HOST:-127.0.0.1}:${PCAP_OVER_IP_PORT:-4242}
+    depends_on:
+      - pcap-broker
 
-    # Mode A: pcap replay mode (slower, for archives replay or rootless CTF)
-    # Add `--pcap-file-continuous` to watch for new pcap in folder.
-    command: -r /input_pcaps
-
-    # Mode B: capture interface (fast, requires root on vulnbox and in Docker)
-    # Drastically reduces ingest delay, but requires to setup traffic mirroring
-    # between the vulnbox game interface and a team server.
-    #command: -i tun5
-    #cap_add:
-    #  - NET_ADMIN
-    #network_mode: "host"
-
-    # Mode C: PCAP-over-IP (fast, requires root on vulnbox)
-    # Connects to a PCAP-over-IP server, such as pcap-broker to read PCAP data.
-    #command: -r /dev/stdin
-    #restart: always
-    #depends_on:
-    #  - pcap-broker
-    #environment:
-    #  - PCAP_OVER_IP=pcap-broker:4242
-
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Shovel Webapp - Web Interface
+  # ═══════════════════════════════════════════════════════════════════════════
   webapp:
     build: ./webapp
-    image: anssi/shovel-webapp:dev
-    restart: always
+    image: shovel-webapp:latest
+    container_name: shovel-webapp
+    restart: unless-stopped
+    
     volumes:
-      # Write access is required in SQLite `mode=ro` as readers need to record
-      # a mark in the WAL file. If you need to make the volume read-only, then
-      # use `immutable=1` parameter in SQLite databases URI. In immutable mode,
-      # SQLite doesn't follow changes made to the database.
       - "./suricata/output:/suricata/output:rw"
+    
+    # Expose on all interfaces (0.0.0.0) so team members can access
+    # Format: "HOST_IP:HOST_PORT:CONTAINER_PORT"
     ports:
-      - 127.0.0.1:8000:8000
+      - "0.0.0.0:${WEBAPP_PORT:-9600}:8000"
+    
+    # Load environment variables from .env file
     env_file:
       - .env
+    
+    depends_on:
+      - suricata
+    
+    # Health check (optional but recommended)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  #pcap-broker:
-  #  container_name: pcap-broker
-  #  build:
-  #    context: .
-  #    dockerfile_inline: |
-  #      FROM golang:alpine
-  #      RUN apk add --no-cache build-base libpcap-dev openssh-client tcpdump
-  #      RUN go install github.com/fox-it/pcap-broker@latest
-  #      ENTRYPOINT ["pcap-broker"]
-  #  restart: always
-  #  volumes:
-  #    - "~/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro"
-  #  environment:
-  #    PCAP_COMMAND: |-
-  #        ssh root@vulnbox -oStrictHostKeyChecking=no
-  #        tcpdump -U --immediate-mode -ni game -s 65535 -w - not tcp port 22
-  #    LISTEN_ADDRESS: 0.0.0.0:4242
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PCAP Broker - Traffic Forwarder (Mode C only)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # This service captures traffic and forwards it to Suricata
+  # Allows multiple clients to receive the same traffic stream
+  # ═══════════════════════════════════════════════════════════════════════════
+  pcap-broker:
+    container_name: pcap-broker
+    
+    # Inline Dockerfile - builds pcap-broker on the fly
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM golang:alpine
+        RUN apk add --no-cache build-base libpcap-dev tcpdump
+        RUN go install github.com/fox-it/pcap-broker@latest
+        ENTRYPOINT ["pcap-broker"]
+    
+    restart: unless-stopped
+    
+    # Host network mode required to access physical network interfaces
+    network_mode: "host"
+    
+    # Privileged mode required for packet capture
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    
+    # Command breakdown:
+    # -listen 0.0.0.0:4242  → Listen on all interfaces (so Suricata can connect)
+    # -cmd "tcpdump ..."    → Capture command
+    #   -U                  → Packet-buffered output
+    #   --immediate-mode    → Deliver packets immediately
+    #   -ni vulnbox         → Capture from 'vulnbox' interface (no DNS resolution)
+    #   -s 65535            → Capture full packets (snaplen)
+    #   -w -                → Write to stdout
+    #   not tcp port 22     → Don't capture SSH (avoid recursion if using SSH)
+    command: 
+      - "-listen"
+      - "0.0.0.0:${PCAP_OVER_IP_PORT:-4242}"
+      - "-cmd"
+      - "tcpdump -U --immediate-mode -ni ${CAPTURE_INTERFACE:-vulnbox} -s 65535 -w - not tcp port 22"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Networks
+# ═══════════════════════════════════════════════════════════════════════════
+networks:
+  default:
+    name: shovel-network
+
+# ═══════════════════════════════════════════════════════════════════════════
+# USAGE INSTRUCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# FIRST TIME SETUP:
+#   1. Run setup script:
+#      ./setup.sh
+#
+#   2. Edit .env configuration:
+#      nano .env
+#      (Set TEAM_IP, CAPTURE_INTERFACE, HOME_NET, services, etc.)
+#
+#   3. Update flag detection rules:
+#      nano suricata/rules/suricata.rules
+#
+# START SHOVEL:
+#   sudo docker-compose up -d --build
+#
+# CHECK STATUS:
+#   docker-compose ps
+#   docker-compose logs -f
+#
+# STOP SHOVEL:
+#   docker-compose down
+#
+# ACCESS DASHBOARD:
+#   From vulnbox:     http://localhost:9600
+#   From team:        http://YOUR_TEAM_IP:9600
+#   ECSC 2025 was:    http://10.42.2.2:9600
+#
+# TROUBLESHOOTING:
+#   View logs:        docker-compose logs -f suricata
+#   View logs:        docker-compose logs -f webapp
+#   View logs:        docker-compose logs -f pcap-broker
+#   Restart:          docker-compose restart webapp
+#   Full restart:     docker-compose down && sudo docker-compose up -d
+#
+# ═══════════════════════════════════════════════════════════════════════════
