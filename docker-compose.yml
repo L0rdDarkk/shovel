@@ -52,7 +52,7 @@ services:
     # cap_add:
     #   - NET_ADMIN
     #   - NET_RAW
-    # command: -i ${CAPTURE_INTERFACE:-vulnbox}
+    # command: -i ${CAPTURE_INTERFACE:-eth0}
     
     # ╔═══════════════════════════════════════════════════════════════════╗
     # ║ MODE C: PCAP-over-IP with Broker (RECOMMENDED)                   ║
@@ -61,6 +61,7 @@ services:
     # ║ Command: sudo docker-compose up -d --build                       ║
     # ║                                                                   ║
     # ║ ✅ THIS IS WHAT TEAM ALBANIA USED AT ECSC 2025!                  ║
+    # ║ ✅ SUPPORTS BOTH IPv4 AND IPv6                                    ║
     # ╚═══════════════════════════════════════════════════════════════════╝
     # Active - Mode C configuration:
     network_mode: "host"
@@ -136,15 +137,15 @@ services:
     # -cmd "tcpdump ..."    → Capture command
     #   -U                  → Packet-buffered output
     #   --immediate-mode    → Deliver packets immediately
-    #   -ni vulnbox         → Capture from 'vulnbox' interface (no DNS resolution)
+    #   -ni eth0            → Capture from network interface (configurable via .env)
     #   -s 65535            → Capture full packets (snaplen)
     #   -w -                → Write to stdout
-    #   not tcp port 22     → Don't capture SSH (avoid recursion if using SSH)
+    #   not port 22         → Don't capture SSH (works for IPv4 & IPv6, TCP & UDP)
     command: 
       - "-listen"
       - "0.0.0.0:${PCAP_OVER_IP_PORT:-4242}"
       - "-cmd"
-      - "tcpdump -U --immediate-mode -ni ${CAPTURE_INTERFACE:-vulnbox} -s 65535 -w - not tcp port 22"
+      - "tcpdump -U --immediate-mode -ni ${CAPTURE_INTERFACE:-eth0} -s 65535 -w - not port 22"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Networks
@@ -164,6 +165,11 @@ networks:
 #   2. Edit .env configuration:
 #      nano .env
 #      (Set TEAM_IP, CAPTURE_INTERFACE, HOME_NET, services, etc.)
+#      
+#      IMPORTANT: Set CAPTURE_INTERFACE to your network interface
+#      - Default is 'eth0' (most common)
+#      - Run 'ip link show' to find your interface
+#      - Common names: eth0, ens3, ens18, enp0s3
 #
 #   3. Update flag detection rules:
 #      nano suricata/rules/suricata.rules
@@ -189,5 +195,11 @@ networks:
 #   View logs:        docker-compose logs -f pcap-broker
 #   Restart:          docker-compose restart webapp
 #   Full restart:     docker-compose down && sudo docker-compose up -d
+#
+# IPv4/IPv6 SUPPORT:
+#   ✅ This configuration captures BOTH IPv4 and IPv6 traffic by default
+#   ✅ The filter 'not port 22' works for both protocols
+#   ✅ Suricata natively supports IPv6 analysis
+#   ✅ No additional configuration needed for dual-stack networks
 #
 # ═══════════════════════════════════════════════════════════════════════════
