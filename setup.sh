@@ -1,6 +1,6 @@
 #!/bin/bash
 # Shovel Version 1.0
-# Team Albania CTF EDTION by Juled Mardodaj | Tedi Vyshka | Jetmir Rajta 
+# Team Albania CTF EDTION by Juled Mardodaj | Tedi Vyshka | Jetmir Rajta
 
 
 set -e
@@ -102,26 +102,26 @@ log_success "Directories created"
 echo ""
 log_info "Creating configuration files..."
 
-# Check if .env.example exists
-if [ ! -f .env.example ]; then
-    log_error ".env.example not found!"
+# Check if example.env exists
+if [ ! -f example.env ]; then
+    log_error "example.env not found!"
     echo "         This file should be in the repository"
     exit 1
 fi
 
-# Copy .env.example to .env
+# Copy example.env to .env
 if [ -f .env ]; then
     log_warning ".env already exists"
     read -p "         Overwrite? (y/N): " OVERWRITE
     if [[ ! "$OVERWRITE" =~ ^[Yy]$ ]]; then
         log_info "Keeping existing .env"
     else
-        cp .env.example .env
-        log_success ".env created from .env.example"
+        cp example.env .env
+        log_success ".env created from example.env"
     fi
 else
-    cp .env.example .env
-    log_success ".env created from .env.example"
+    cp example.env .env
+    log_success ".env created from example.env"
 fi
 
 # Create default Suricata rules if not exists
