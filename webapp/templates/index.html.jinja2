@@ -219,6 +219,16 @@
       </div>
     </div>
   </div>
+  <script>
+    // Get tick length from the app data attribute (in seconds)
+    const tickLength = parseInt(document.getElementById('app').getAttribute('data-tick-length')) || 60;
+    const tickMilliseconds = tickLength * 1000;
+    setTimeout(function() {
+      console.log('Tick completed - reloading page...');
+      location.reload();
+    }, tickMilliseconds);
+    console.log(`Page will auto-refresh in ${tickLength} seconds (1 tick)`);
+  </script>
 </body>
-
+</body>
 </html>
